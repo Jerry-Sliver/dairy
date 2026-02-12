@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>超级日记 | SuperDairy - 云上天国</title>
+    <link rel="shortcut icon" href="../favicon.png" type="image/png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --accent: #2563eb;
+            --bg-light: #ffffff;
+            --geek-gray: #f1f5f9;
+            --income: #10b981;
+            --expense: #ef4444;
+        }
+        body {
+            background-color: var(--bg-light);
+            background-image: radial-gradient(#e2e8f0 1px, transparent 1px);
+            background-size: 24px 24px;
+            font-family: 'Inter', sans-serif;
+            color: #0f172a;
+        }
+        .mono { font-family: 'Fira Code', monospace; }
+        
+        /* 极简卡片 */
+        .geek-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(8px);
+            border: 1px solid #e2e8f0;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .geek-card:hover {
+            border-color: var(--accent);
+            box-shadow: 0 10px 30px -10px rgba(37, 99, 235, 0.1);
+            transform: translateY(-2px);
+        }
+
+        /* 侧边装饰线 */
+        .deco-line {
+            position: relative;
+            padding-left: 2rem;
+        }
+        .deco-line::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #e2e8f0;
+        }
+        .geek-card:hover .deco-line::before {
+            background: var(--accent);
+        }
+
+        /* 状态指示灯 */
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            background-color: var(--accent);
+            box-shadow: 0 0 8px var(--accent);
+            animation: blink 2s infinite;
+        }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        /* 隐藏滚动条但保留功能 */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        
+        /* 日记条目样式 */
+        .diary-entry {
+            transition: all 0.3s ease;
+            overflow: hidden;
+            cursor: pointer;
+        }
+        .diary-entry:hover {
+            transform: translateX(4px);
+        }
+        .diary-summary {
+            padding: 4px 0;
+        }
+        .diary-full-details {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            padding: 0 0 4px 0;
+        }
+        .diary-entry.expanded .diary-full-details {
+            max-height: 500px;
+            padding: 8px 0 12px 0;
+        }
+        
+        /* 输入框聚焦样式 */
+        .input-focus:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+        }
+        
+        /* 输入框长度限制 */
+        .text-input {
+            max-width: 280px; /* 限制文本输入框宽度 */
+        }
+        @media (max-width: 768px) {
+            .text-input {
+                max-width: 100%; /* 移动端全屏宽度 */
+            }
+        }
+        
+        /* 详情列表样式 */
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            font-size: 14px;
+        }
+        .detail-label {
+            color: #475569;
+        }
+        .detail-value {
+            font-weight: 500;
+        }
+        .detail-divider {
+            height: 1px;
+            background-color: #f1f5f9;
+            margin: 8px 0;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- 继承原导航栏 -->
+    <header class="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/80 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <i data-lucide="cloud" class="text-blue-600 w-6 h-6"></i>
+                <div class="hidden sm:block">
+                    <span class="font-bold tracking-tight text-slate-900"><a href="../../index.html">云上天国</a></span>
+                    <span class="mono text-[10px] text-slate-400 ml-2">v3.0.1</span>
+                </div>
+            </div>
+
+            <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
+                <div class="relative group cursor-pointer py-2">
+                    <span class="group-hover:text-blue-600 transition-colors flex items-center gap-1">
+                        本站创意 <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                    </span>
+                    <div class="absolute top-full left-0 w-56 p-2 bg-white border border-slate-200 shadow-xl rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+                        <a href="../nativeCreativity/pretendSinging/index.html" class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 hover:text-blue-600">
+                            <i data-lucide="music" class="w-4 h-4"></i> 假装自己在唱歌
+                        </a>
+                        <a href="../nativeCreativity/wordsReview/index.html" class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 hover:text-blue-600">
+                            <i data-lucide="brain-circuit" class="w-4 h-4"></i> 单词强化训练
+                        </a>
+                        <a href="../nativeCreativity/foreignEnterpriseRecruitment/index.html" class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 hover:text-blue-600">
+                            <i data-lucide="globe" class="w-4 h-4"></i> 外企招聘网站汇总
+                        </a>
+                    </div>
+                </div>
+                <a href="#" class="hover:text-blue-600 transition-colors">会员托管</a>
+                <a href="../../siteRecommendation/index.html" class="hover:text-blue-600 transition-colors">实用链接</a>
+            </nav>
+
+            <div class="flex items-center gap-5 border-l border-slate-200 pl-6">
+                <a href="https://github.com/Jerry-Sliver/CloudboundParadise" target="_blank" class="text-slate-400 hover:text-slate-900 transition-colors"><i data-lucide="github" class="w-5 h-5"></i></a>
+                <a href="#" class="text-slate-400 hover:text-blue-400 transition-colors"><i data-lucide="twitter" class="w-5 h-5"></i></a>
+                <a href="https://www.xiaohongshu.com/user/profile/66de60cf000000001d02166e" class="text-slate-400 hover:text-red-500 transition-colors" title="小红书"><i data-lucide="book-open" class="w-5 h-5"></i></a>
+                <div class="relative group">
+                    <button class="bg-slate-900 text-white px-4 py-1.5 rounded-full text-xs mono hover:bg-blue-600 transition-all flex items-center gap-2">
+                        CONTACT <i data-lucide="send" class="w-3 h-3"></i>
+                    </button>
+                    <div class="absolute top-full right-0 mt-2 w-48 p-2 bg-white border border-slate-200 shadow-xl rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+                        <p class="text-[10px] text-slate-400 px-3 py-1 mono uppercase">E-mail</p>
+                        <a href="mailto:973256921@qq.com" class="block p-2 text-xs hover:bg-slate-50 rounded-md">973256921@qq.com</a>
+                        <a href="mailto:lee434164@gmail.com" class="block p-2 text-xs hover:bg-slate-50 rounded-md">lee434164@gmail.com</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-6 pt-12 pb-32">
+        <!-- 页面标题 -->
+        <div class="mb-12">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-xs mono mb-6">
+                <span class="status-dot"></span> SUPER_DAIRY: ACTIVE
+            </div>
+            <h1 class="text-5xl font-black tracking-tighter text-slate-900 mb-4">
+                超级日记 <span class="text-blue-600">SuperDairy</span>
+            </h1>
+            <p class="text-lg text-slate-500 max-w-xl font-light">
+                简洁高效的每日记账与事项记录工具，帮你掌握收支平衡与时间分配
+            </p>
+        </div>
+
+        <!-- 总览统计 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+            <div class="geek-card p-6 rounded-xl">
+                <h3 class="text-sm text-slate-500 mb-2">总消费</h3>
+                <div class="flex items-end gap-2">
+                    <span class="text-3xl font-bold text-expense" id="total-expense">¥0.00</span>
+                    <span class="text-sm text-slate-400 mb-1">累计</span>
+                </div>
+            </div>
+            <div class="geek-card p-6 rounded-xl">
+                <h3 class="text-sm text-slate-500 mb-2">总收入</h3>
+                <div class="flex items-end gap-2">
+                    <span class="text-3xl font-bold text-income" id="total-income">¥0.00</span>
+                    <span class="text-sm text-slate-400 mb-1">累计</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 新建日记按钮 -->
+        <div id="create-diary-btn" class="flex justify-center mb-12 cursor-pointer">
+            <div class="w-20 h-20 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg hover:bg-blue-700 transition-all hover:scale-105">
+                <i data-lucide="plus" class="w-10 h-10"></i>
+            </div>
+        </div>
+
+        <!-- 日记编辑区域 (默认隐藏) -->
+        <div id="diary-editor" class="geek-card p-6 rounded-2xl mb-12 hidden">
+            <h2 class="text-2xl font-bold mb-6" id="diary-date"></h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- 左侧：收支清单 -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <i data-lucide="wallet" class="w-5 h-5 text-blue-600"></i> 收支清单
+                    </h3>
+                    
+                    <div id="expense-items">
+                        <div class="flex flex-wrap gap-3 mb-4 items-center">
+                            <!-- 收支类型选择 -->
+                            <select class="type-select px-3 py-2 border border-slate-200 rounded-lg input-focus w-24">
+                                <option value="expense">支出</option>
+                                <option value="income">收入</option>
+                            </select>
+                            <!-- 事件描述 (限制15字符) -->
+                            <input type="text" placeholder="事件描述" maxlength="15" class="flex-1 px-4 py-2 border border-slate-200 rounded-lg input-focus text-input">
+                            <!-- 金额输入 (限制6位数字+1位小数) -->
+                            <div class="flex items-center gap-2 w-36">
+                                <span class="text-slate-500">¥</span>
+                                <input type="number" placeholder="金额" step="0.1" min="0" max="999999.9" 
+                                    class="flex-1 px-4 py-2 border border-slate-200 rounded-lg input-focus"
+                                    oninput="this.value = this.value.replace(/(\.\d{1}).*/, '$1').replace(/^(\d{6}).*/, '$1');">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button id="add-expense" class="text-sm text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1 mb-6">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i> 添加收支项目
+                    </button>
+                    
+                    <div class="flex justify-between font-medium pt-4 border-t border-slate-100">
+                        <span>总支出：</span>
+                        <span id="expense-total" class="text-expense">¥0.00</span>
+                    </div>
+                    <div class="flex justify-between font-medium pt-2">
+                        <span>总收入：</span>
+                        <span id="income-total" class="text-income">¥0.00</span>
+                    </div>
+                </div>
+                
+                <!-- 右侧：今日事项 -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <i data-lucide="list" class="w-5 h-5 text-blue-600"></i> 今日事项
+                    </h3>
+                    
+                    <div id="activity-items">
+                        <div class="flex flex-wrap gap-3 mb-4 items-center">
+                            <!-- 事项描述 (限制15字符) -->
+                            <input type="text" placeholder="事项描述" maxlength="15" class="flex-1 px-4 py-2 border border-slate-200 rounded-lg input-focus text-input">
+                            <!-- 时间输入 -->
+                            <div class="flex items-center gap-2 w-36">
+                                <input type="number" placeholder="小时" step="0.5" min="0" max="24" 
+                                    class="flex-1 px-4 py-2 border border-slate-200 rounded-lg input-focus">
+                                <span class="text-slate-500">h</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button id="add-activity" class="text-sm text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1 mb-6">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i> 添加事项
+                    </button>
+                    
+                    <div class="flex justify-between font-medium pt-4 border-t border-slate-100">
+                        <span>总时长：</span>
+                        <span id="activity-total" class="text-slate-700">0.0 小时</span>
+                    </div>
+                    <p id="time-warning" class="text-xs text-red-500 mt-2 hidden">* 时间总和需达到24小时才能保存</p>
+                </div>
+            </div>
+            
+            <div class="flex justify-end gap-4 mt-8">
+                <button id="cancel-diary" class="px-6 py-2 border border-slate-200 rounded-lg text-sm font-medium hover:border-slate-300 transition-all">
+                    取消
+                </button>
+                <button id="save-diary" class="px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-all">
+                    保存日记
+                </button>
+            </div>
+        </div>
+
+        <!-- 日记列表 -->
+        <div>
+            <h2 class="text-2xl font-bold mb-6">历史记录</h2>
+            <div id="diary-list" class="space-y-4">
+                <!-- 日记条目会通过JS动态添加 -->
+                <div class="text-center text-slate-400 py-12">
+                    <i data-lucide="book-open" class="w-12 h-12 mx-auto mb-4 text-slate-200"></i>
+                    <p>暂无记录，点击上方加号开始记录今天的日记吧</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="max-w-7xl mx-auto px-6 py-12 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
+        <div class="text-slate-400 text-xs mono">
+            &copy; 2025 CLOUDBOUND_PARADISE // ALL_RIGHTS_RESERVED
+        </div>
+        <div class="flex gap-8 text-xs mono text-slate-400">
+            <span class="flex items-center gap-2"><span class="status-dot"></span> API_STATUS: OK</span>
+            <span>Uptime: 99.9%</span>
+        </div>
+    </footer>
+
+    <script>
+        // 初始化 Lucide 图标
+        lucide.createIcons();
+        
+        // 日期格式化工具
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+            const weekDay = weekDays[date.getDay()];
+            return `${year}年${month}月${day}日 ${weekDay}`;
+        }
+        
+        function formatDateForId(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}${month}${day}`;
+        }
+        
+        // DOM 元素
+        const createDiaryBtn = document.getElementById('create-diary-btn');
+        const diaryEditor = document.getElementById('diary-editor');
+        const diaryDate = document.getElementById('diary-date');
+        const expenseItems = document.getElementById('expense-items');
+        const activityItems = document.getElementById('activity-items');
+        const addExpenseBtn = document.getElementById('add-expense');
+        const addActivityBtn = document.getElementById('add-activity');
+        const expenseTotal = document.getElementById('expense-total');
+        const incomeTotal = document.getElementById('income-total');
+        const activityTotal = document.getElementById('activity-total');
+        const timeWarning = document.getElementById('time-warning');
+        const saveDiaryBtn = document.getElementById('save-diary');
+        const cancelDiaryBtn = document.getElementById('cancel-diary');
+        const diaryList = document.getElementById('diary-list');
+        const totalExpenseEl = document.getElementById('total-expense');
+        const totalIncomeEl = document.getElementById('total-income');
+        
+        // 当前编辑的日期
+        let currentDiaryDate = null;
+        
+        // 从本地存储加载日记数据
+        let diaries = JSON.parse(localStorage.getItem('superDairyData')) || {};
+        
+        // 初始化页面
+        updateDiaryList();
+        updateTotalStats();
+        
+        // 计算收支总和
+        function calculateExpenses() {
+            let totalExpense = 0;
+            let totalIncome = 0;
+            
+            // 遍历所有收支项目
+            const items = expenseItems.querySelectorAll('.flex.flex-wrap.gap-3.mb-4');
+            items.forEach(item => {
+                const type = item.querySelector('.type-select').value;
+                const amountInput = item.querySelector('input[type="number"]');
+                const amount = parseFloat(amountInput.value) || 0;
+                
+                if (type === 'expense') {
+                    totalExpense += amount;
+                } else {
+                    totalIncome += amount;
+                }
+            });
+            
+            // 更新显示
+            expenseTotal.textContent = `¥${totalExpense.toFixed(1)}`;
+            incomeTotal.textContent = `¥${totalIncome.toFixed(1)}`;
+            
+            return { expense: totalExpense, income: totalIncome };
+        }
+        
+        // 计算活动时长总和
+        function calculateActivities() {
+            let total = 0;
+            const inputs = activityItems.querySelectorAll('input[type="number"]');
+            
+            inputs.forEach(input => {
+                if (input.value) {
+                    total += parseFloat(input.value);
+                }
+            });
+            
+            activityTotal.textContent = `${total.toFixed(1)} 小时`;
+            
+            // 检查是否满足24小时
+            if (total < 24) {
+                timeWarning.classList.remove('hidden');
+                return false;
+            } else {
+                timeWarning.classList.add('hidden');
+                return true;
+            }
+        }
+        
+        // 添加收支项目
+        function addExpenseItem() {
+            const item = document.createElement('div');
+            item.className = 'flex flex-wrap gap-3 mb-4 items-center';
+            item.innerHTML = `
+                <!-- 收支类型选择 -->
+                <select class="type-select px-3 py-2 border border-slate-200 rounded-lg input-focus w-24">
+                    <option value="expense">支出</option>
+                    <option value="income">收入</option>
+                </select>
+                <!-- 事件描述 (限制15字符) -->
+                <input type="text" placeholder="事件描述" maxlength="15" class="flex-1 px-4 py-2 border border-slate-200 rounded-lg input-focus text-input">
+                <!-- 金额输入 (限制6位数字+1位小数) -->
+                <div class="flex items-center gap-2 w-36">
+                    <span class="text-slate-500">¥</span>
+                    <input type="number" placeholder="金额" step="0.1" min="0" max="999999.9" 
+                        class="flex-1 px-4 py-2 border border-slate-200 rounded-lg input-focus"
+                        oninput="this.value = this.value.replace(/(\.\d{1}).*/, '$1').replace(/^(\d{6}).*/, '$1');">
+                </div>
+            `;
+            
+            expenseItems.appendChild(item);
+            
+            // 添加输入事件监听
+            const amountInput = item.querySelector('input[type="number"]');
+            const typeSelect = item.querySelector('.type-select');
+            
+            amountInput.addEventListener('input', calculateExpenses);
+            typeSelect.addEventListener('change', calculateExpenses);
+        }
+        
+        // 添加活动项目
+        function addActivityItem() {
+            const item = document.createElement('div');
+            item.className = 'flex flex-wrap gap-3 mb-4 items-center';
+            item.innerHTML = `
+                <!-- 事项描述 (限制15字符) -->
+                <input type="text" placeholder="事项描述" maxlength="15" class="flex-1 px-4 py-2 border border-slate-200 rounded-lg input-focus text-input">
+                <!-- 时间输入 -->
+                <div class="flex items-center gap-2 w-36">
+                    <input type="number" placeholder="小时" step="0.5" min="0" max="24" 
+                        class="flex-1 px-4 py-2 border border-slate-200 rounded-lg input-focus">
+                    <span class="text-slate-500">h</span>
+                </div>
+            `;
+            
+            activityItems.appendChild(item);
+            
+            // 添加输入事件监听
+            item.querySelector('input[type="number"]').addEventListener('input', calculateActivities);
+        }
+        
+        // 清空编辑区域
+        function clearEditor() {
+            // 保留一个空的收支项目
+            while (expenseItems.children.length > 1) {
+                expenseItems.removeChild(expenseItems.lastChild);
+            }
+            // 清空输入值
+            const firstExpense = expenseItems.querySelector('.flex.flex-wrap.gap-3.mb-4');
+            firstExpense.querySelector('input[type="text"]').value = '';
+            firstExpense.querySelector('input[type="number"]').value = '';
+            firstExpense.querySelector('.type-select').value = 'expense';
+            
+            // 保留一个空的活动项目
+            while (activityItems.children.length > 1) {
+                activityItems.removeChild(activityItems.lastChild);
+            }
+            // 清空输入值
+            const firstActivity = activityItems.querySelector('.flex.flex-wrap.gap-3.mb-4');
+            firstActivity.querySelector('input[type="text"]').value = '';
+            firstActivity.querySelector('input[type="number"]').value = '';
+            
+            // 重置总计
+            expenseTotal.textContent = '¥0.0';
+            incomeTotal.textContent = '¥0.0';
+            activityTotal.textContent = '0.0 小时';
+            timeWarning.classList.add('hidden');
+        }
+        
+        // 打开日记编辑器
+        function openDiaryEditor(date = new Date()) {
+            currentDiaryDate = date;
+            const dateStr = formatDate(date);
+            const dateId = formatDateForId(date);
+            
+            diaryDate.textContent = dateStr;
+            createDiaryBtn.classList.add('hidden');
+            diaryEditor.classList.remove('hidden');
+            
+            // 如果存在该日期的日记，加载数据
+            if (diaries[dateId]) {
+                const diary = diaries[dateId];
+                
+                // 清空现有项目（保留一个）
+                while (expenseItems.children.length > 1) {
+                    expenseItems.removeChild(expenseItems.lastChild);
+                }
+                
+                // 添加收支项目
+                diary.expenses.forEach((expense, index) => {
+                    if (index > 0) { // 第一个已经存在
+                        addExpenseItem();
+                    }
+                    const items = expenseItems.querySelectorAll('.flex.flex-wrap.gap-3.mb-4');
+                    const currentItem = items[index];
+                    currentItem.querySelector('.type-select').value = expense.type;
+                    currentItem.querySelector('input[type="text"]').value = expense.description;
+                    currentItem.querySelector('input[type="number"]').value = expense.amount;
+                });
+                
+                // 清空现有项目（保留一个）
+                while (activityItems.children.length > 1) {
+                    activityItems.removeChild(activityItems.lastChild);
+                }
+                
+                // 添加活动项目
+                diary.activities.forEach((activity, index) => {
+                    if (index > 0) { // 第一个已经存在
+                        addActivityItem();
+                    }
+                    const items = activityItems.querySelectorAll('.flex.flex-wrap.gap-3.mb-4');
+                    const currentItem = items[index];
+                    currentItem.querySelector('input[type="text"]').value = activity.description;
+                    currentItem.querySelector('input[type="number"]').value = activity.hours;
+                });
+                
+                // 重新计算总和
+                calculateExpenses();
+                calculateActivities();
+            } else {
+                // 清空编辑器
+                clearEditor();
+            }
+        }
+        
+        // 保存日记
+        function saveDiary() {
+            if (!currentDiaryDate) return;
+            
+            // 验证时间总和
+            const timeValid = calculateActivities();
+            if (!timeValid) return;
+            
+            const dateId = formatDateForId(currentDiaryDate);
+            const dateStr = formatDate(currentDiaryDate);
+            
+            // 收集收支数据
+            const expenses = [];
+            expenseItems.querySelectorAll('.flex.flex-wrap.gap-3.mb-4').forEach(item => {
+                const type = item.querySelector('.type-select').value;
+                const desc = item.querySelector('input[type="text"]').value.trim();
+                const amount = parseFloat(item.querySelector('input[type="number"]').value) || 0;
+                
+                if (desc || amount !== 0) {
+                    expenses.push({
+                        type: type,
+                        description: desc,
+                        amount: amount
+                    });
+                }
+            });
+            
+            // 收集活动数据
+            const activities = [];
+            activityItems.querySelectorAll('.flex.flex-wrap.gap-3.mb-4').forEach(item => {
+                const desc = item.querySelector('input[type="text"]').value.trim();
+                const hours = parseFloat(item.querySelector('input[type="number"]').value) || 0;
+                
+                if (desc || hours !== 0) {
+                    activities.push({
+                        description: desc,
+                        hours: hours
+                    });
+                }
+            });
+            
+            // 计算收支总和
+            const totals = calculateExpenses();
+            
+            // 保存到本地存储
+            diaries[dateId] = {
+                date: dateStr,
+                dateId: dateId,
+                expenses: expenses,
+                activities: activities,
+                totalExpense: totals.expense,
+                totalIncome: totals.income
+            };
+            
+            localStorage.setItem('superDairyData', JSON.stringify(diaries));
+            
+            // 更新界面
+            closeDiaryEditor();
+            updateDiaryList();
+            updateTotalStats();
+        }
+        
+        // 关闭日记编辑器
+        function closeDiaryEditor() {
+            diaryEditor.classList.add('hidden');
+            createDiaryBtn.classList.remove('hidden');
+            currentDiaryDate = null;
+        }
+        
+        // 切换日记详情展开/收起
+        function toggleDiaryDetails(entry, dateId) {
+            entry.classList.toggle('expanded');
+            
+            // 如果是首次展开，加载详情内容
+            if (entry.classList.contains('expanded') && !entry.querySelector('.detail-loaded')) {
+                loadDiaryDetails(entry, dateId);
+            }
+        }
+        
+        // 加载日记详情
+        function loadDiaryDetails(entry, dateId) {
+            const diary = diaries[dateId];
+            const detailsContainer = entry.querySelector('.diary-full-details');
+            
+            // 构建收支详情HTML
+            let expenseHtml = '<div class="mb-4">';
+            expenseHtml += '<h4 class="text-sm font-semibold text-slate-700 mb-2">收支明细</h4>';
+            
+            if (diary.expenses.length > 0) {
+                diary.expenses.forEach(item => {
+                    const typeClass = item.type === 'expense' ? 'text-expense' : 'text-income';
+                    const typeText = item.type === 'expense' ? '支出' : '收入';
+                    expenseHtml += `
+                        <div class="detail-item">
+                            <span class="detail-label">${item.description || '未命名'}</span>
+                            <span class="detail-value ${typeClass}">${typeText} ¥${item.amount.toFixed(1)}</span>
+                        </div>
+                    `;
+                });
+            } else {
+                expenseHtml += '<div class="text-sm text-slate-400">暂无收支记录</div>';
+            }
+            
+            expenseHtml += `<div class="detail-divider"></div>`;
+            expenseHtml += `
+                <div class="detail-item font-medium">
+                    <span>总支出</span>
+                    <span class="text-expense">¥${diary.totalExpense.toFixed(1)}</span>
+                </div>
+                <div class="detail-item font-medium">
+                    <span>总收入</span>
+                    <span class="text-income">¥${diary.totalIncome.toFixed(1)}</span>
+                </div>
+            `;
+            expenseHtml += '</div>';
+            
+            // 构建事项详情HTML
+            let activityHtml = '<div>';
+            activityHtml += '<h4 class="text-sm font-semibold text-slate-700 mb-2">今日事项</h4>';
+            
+            if (diary.activities.length > 0) {
+                diary.activities.forEach(item => {
+                    activityHtml += `
+                        <div class="detail-item">
+                            <span class="detail-label">${item.description || '未命名'}</span>
+                            <span class="detail-value">${item.hours.toFixed(1)} 小时</span>
+                        </div>
+                    `;
+                });
+            } else {
+                activityHtml += '<div class="text-sm text-slate-400">暂无事项记录</div>';
+            }
+            
+            activityHtml += `<div class="detail-divider"></div>`;
+            activityHtml += `
+                <div class="detail-item font-medium">
+                    <span>总时长</span>
+                    <span>${diary.activities.reduce((sum, item) => sum + item.hours, 0).toFixed(1)} 小时</span>
+                </div>
+            `;
+            activityHtml += '</div>';
+            
+            // 添加编辑按钮
+            const editHtml = `
+                <div class="mt-4 pt-4 border-t border-slate-100">
+                    <button class="edit-diary-btn text-sm text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1">
+                        <i data-lucide="edit" class="w-4 h-4"></i> 编辑此日记
+                    </button>
+                </div>
+            `;
+            
+            // 插入详情内容
+            detailsContainer.innerHTML = expenseHtml + activityHtml + editHtml;
+            
+            // 标记为已加载
+            detailsContainer.classList.add('detail-loaded');
+            
+            // 重新初始化图标
+            lucide.createIcons();
+            
+            // 添加编辑按钮事件
+            entry.querySelector('.edit-diary-btn').addEventListener('click', (e) => {
+                e.stopPropagation(); // 阻止事件冒泡
+                // 解析日期
+                const year = parseInt(dateId.substring(0, 4));
+                const month = parseInt(dateId.substring(4, 6)) - 1; // 月份从0开始
+                const day = parseInt(dateId.substring(6, 8));
+                const date = new Date(year, month, day);
+                
+                openDiaryEditor(date);
+            });
+        }
+        
+        // 更新日记列表
+        function updateDiaryList() {
+            // 清空列表
+            diaryList.innerHTML = '';
+            
+            // 如果没有日记
+            if (Object.keys(diaries).length === 0) {
+                diaryList.innerHTML = `
+                    <div class="text-center text-slate-400 py-12">
+                        <i data-lucide="book-open" class="w-12 h-12 mx-auto mb-4 text-slate-200"></i>
+                        <p>暂无记录，点击上方加号开始记录今天的日记吧</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // 按日期排序（从新到旧）
+            const sortedDates = Object.keys(diaries).sort((a, b) => b.localeCompare(a));
+            
+            // 添加日记条目
+            sortedDates.forEach(dateId => {
+                const diary = diaries[dateId];
+                
+                const entry = document.createElement('div');
+                entry.className = 'diary-entry geek-card p-4 rounded-xl';
+                entry.setAttribute('data-date-id', dateId);
+                
+                entry.innerHTML = `
+                    <div class="diary-summary flex justify-between items-center">
+                        <h3 class="font-medium">${diary.date}</h3>
+                        <div class="flex items-center gap-4">
+                            <div class="text-sm">
+                                <span class="text-expense">支出 ¥${diary.totalExpense.toFixed(1)}</span>
+                                <span class="mx-2 text-slate-300">|</span>
+                                <span class="text-income">收入 ¥${diary.totalIncome.toFixed(1)}</span>
+                            </div>
+                            <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 transition-transform"></i>
+                        </div>
+                    </div>
+                    <div class="diary-full-details"></div>
+                `;
+                
+                diaryList.appendChild(entry);
+                
+                // 点击展开/收起详情
+                entry.addEventListener('click', () => {
+                    toggleDiaryDetails(entry, dateId);
+                    
+                    // 旋转箭头图标
+                    const arrow = entry.querySelector('[data-lucide="chevron-down"]');
+                    if (entry.classList.contains('expanded')) {
+                        arrow.style.transform = 'rotate(180deg)';
+                    } else {
+                        arrow.style.transform = 'rotate(0)';
+                    }
+                });
+            });
+        }
+        
+        // 更新总统计
+        function updateTotalStats() {
+            let totalExpense = 0;
+            let totalIncome = 0;
+            
+            Object.values(diaries).forEach(diary => {
+                totalExpense += diary.totalExpense;
+                totalIncome += diary.totalIncome;
+            });
+            
+            totalExpenseEl.textContent = `¥${totalExpense.toFixed(1)}`;
+            totalIncomeEl.textContent = `¥${totalIncome.toFixed(1)}`;
+        }
+        
+        // 事件监听
+        createDiaryBtn.addEventListener('click', () => openDiaryEditor());
+        addExpenseBtn.addEventListener('click', addExpenseItem);
+        addActivityBtn.addEventListener('click', addActivityItem);
+        saveDiaryBtn.addEventListener('click', saveDiary);
+        cancelDiaryBtn.addEventListener('click', closeDiaryEditor);
+        
+        // 为初始项目添加事件监听
+        const firstExpenseAmount = expenseItems.querySelector('input[type="number"]');
+        const firstExpenseType = expenseItems.querySelector('.type-select');
+        firstExpenseAmount.addEventListener('input', calculateExpenses);
+        firstExpenseType.addEventListener('change', calculateExpenses);
+        
+        activityItems.querySelector('input[type="number"]').addEventListener('input', calculateActivities);
+    </script>
+</body>
+</html>
